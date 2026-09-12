@@ -1,0 +1,101 @@
+if (dispPage == 0) {
+
+{
+    RavenLauncher::EnsureMinecraftDirs();
+
+    Glass::BeginPanel("RAVENXD LAUNCHER");
+    ImGui::TextUnformatted("Minecraft 1.8.9");
+    ImGui::SameLine();
+    if (RavenLauncher::ForgeInstalled())
+        Glass::StatusPill("Forge ready", IM_COL32(52,209,88,255));
+    else
+        Glass::StatusPill("Forge not installed", IM_COL32(255,159,10,255));
+
+    ImGui::Dummy(ImVec2(0, 8));
+    ImGui::TextDisabled("Account");
+    ImGui::SameLine(150.0f);
+    RavenLoadAccounts();
+    ImGui::TextUnformatted(ravenAccounts.empty() ? "None" : ravenAccounts[ravenSelectedAccount].c_str());
+
+    ImGui::Dummy(ImVec2(0, 12));
+
+    if (Glass::Button(
+        RavenLauncher::ForgeInstalled() ? "Reinstall Forge 1.8.9" : "Download Forge 1.8.9",
+        true, ImVec2(240, 46))) {
+        if (RavenLauncher::ForgeInstalled()) {
+            RavenLauncher::RunForgeInstaller();
+        } else {
+            RavenLauncher::StartForgeDownload();
+            Glass::Notify(Glass::Icon::Download, IM_COL32(10,132,255,255),
+                          "RavenXD", "Forge 1.8.9 download started",
+                          "The installer will be saved in .minecraft.");
+        }
+    }
+
+    ImGui::SameLine(0, 10);
+    if (Glass::Button("Install / Open Forge", false, ImVec2(190, 46))) {
+        if (!RavenLauncher::RunForgeInstaller()) {
+            Glass::Notify(Glass::Icon::Bolt, IM_COL32(255,69,58,255),
+                          "RavenXD", "Forge installer not found",
+                          "Download Forge 1.8.9 first.");
+        }
+    }
+
+    ImGui::Dummy(ImVec2(0, 10));
+
+    bool modReady = RavenLauncher::ModInstalled();
+    if (Glass::Button(modReady ? "RavenXD Mod Ready" : "Download RavenXD Mod",
+                      !modReady, ImVec2(240, 44))) {
+        RavenLauncher::StartModDownload();
+        Glass::Notify(Glass::Icon::Download, IM_COL32(10,132,255,255),
+                      "RavenXD", "Mod download started",
+                      "Saving RavenXD-v2.jar to .minecraft\\mods.");
+    }
+
+    ImGui::SameLine(0, 10);
+    if (Glass::Button("Open Minecraft", true, ImVec2(190, 44))) {
+        if (!RavenLauncher::LaunchMinecraft()) {
+            Glass::Notify(Glass::Icon::Bolt, IM_COL32(255,69,58,255),
+                          "RavenXD", "Minecraft Launcher not found",
+                          "Install the official Minecraft Launcher first.");
+        }
+    }
+
+    ImGui::Dummy(ImVec2(0, 10));
+    int fs = RavenLauncher::forgeState.load();
+    int ms = RavenLauncher::modState.load();
+    ImGui::TextDisabled("Forge: %s", fs == RavenLauncher::Working ? "Downloading..." :
+                                      fs == RavenLauncher::Ready ? "Ready" :
+                                      fs == RavenLauncher::Failed ? "Download failed" :
+                                      RavenLauncher::ForgeInstalled() ? "Installed" : "Not installed");
+    ImGui::TextDisabled("Mod:   %s", ms == RavenLauncher::Working ? "Downloading..." :
+                                      ms == RavenLauncher::Ready ? "Ready" :
+                                      ms == RavenLauncher::Failed ? "Download failed" :
+                                      modReady ? "Installed" : "Not installed");
+    ImGui::TextDisabled("Version: Forge 1.8.9 • 11.15.1.2318");
+
+    Glass::EndPanel();
+
+    Glass::BeginPanel("MINECRAFT FILES");
+    ImGui::TextDisabled("Game directory");
+    ImGui::SameLine(180);
+    ImGui::TextUnformatted("%%APPDATA%%\\.minecraft");
+    ImGui::TextDisabled("Forge installer");
+    ImGui::SameLine(180);
+    ImGui::TextUnformatted("forge-1.8.9-11.15.1.2318-installer.jar");
+    ImGui::TextDisabled("RavenXD mod");
+    ImGui::SameLine(180);
+    ImGui::TextUnformatted("mods\\RavenXD-v2.jar");
+    Glass::EndPanel();
+
+    const char* wm = "RavenXD • Minecraft 1.8.9 • Liquid Glass";
+    ImVec2 ws = ImGui::CalcTextSize(wm);
+    ImVec2 wp = ImGui::GetCursorScreenPos();
+    float contentW = ImGui::GetContentRegionAvail().x;
+    ImGui::GetWindowDrawList()->AddText(
+        ImVec2(wp.x + ((contentW > ws.x) ? (contentW - ws.x) : 0.0f), wp.y + 8.0f),
+        IM_COL32(255,255,255,100), wm);
+    ImGui::Dummy(ImVec2(contentW, 34));
+}
+
+}
