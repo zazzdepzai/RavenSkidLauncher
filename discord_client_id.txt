@@ -1,0 +1,8 @@
+# RavenXD built-in Discord RPC application IDs (randomly selected on launcher start):
+# 1547451186913878046
+# 1548190308733423707
+# 1548191970516668456
+# 1548192094911471626
+#
+# Leave this file as-is for random rotation.
+# To force one ID for testing, replace the first line with the numeric ID.

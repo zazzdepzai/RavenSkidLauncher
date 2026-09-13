@@ -1,0 +1,87 @@
+name: Build RavenXD Launcher
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Windows x64
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Verify toolchain
+        shell: pwsh
+        run: |
+          msbuild -version
+          if (-not (Test-Path .\imgui-menu.sln)) { throw "imgui-menu.sln not found" }
+
+      - name: Setup Node.js for Minecraft core
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: core/package.json
+
+      - name: Install RavenXD Minecraft core
+        shell: pwsh
+        run: |
+          Set-Location .\core
+          npm install --omit=dev --no-audit --no-fund
+          Set-Location ..
+
+      - name: Build RavenXD Release x64
+        shell: pwsh
+        run: |
+          msbuild .\imgui-menu.sln /m /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143
+
+      - name: Package launcher
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = Get-ChildItem -Path . -Filter imgui-menu.exe -Recurse -File | Where-Object { $_.FullName -match '\\build\\x64\\Release\\' } | Select-Object -First 1
+          if (-not $exe) { throw 'Release executable not found' }
+
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item $exe.FullName .\dist\RavenXD-Launcher.exe -Force
+          Copy-Item .\discord_client_id.txt .\dist\discord_client_id.txt -Force
+          Copy-Item .\raven_url.txt .\dist\raven_url.txt -Force
+          if (Test-Path .\README_RAVENXD.md) { Copy-Item .\README_RAVENXD.md .\dist\README_RAVENXD.md -Force }
+          Copy-Item .\THIRD_PARTY.md .\dist\THIRD_PARTY.md -Force
+
+          # The RavenXD logo is embedded into the EXE by imgui-menu.rc.
+          Copy-Item .\ravenxd.ico .\dist\ravenxd.ico -Force
+
+          # Bundle Node.js so the launcher does not require a separate Node installation.
+          $nodeZip = "$env:RUNNER_TEMP\node.zip"
+          Invoke-WebRequest -Uri "https://nodejs.org/dist/v20.19.4/node-v20.19.4-win-x64.zip" -OutFile $nodeZip
+          Expand-Archive -Path $nodeZip -DestinationPath "$env:RUNNER_TEMP\node" -Force
+          New-Item -ItemType Directory -Force -Path .\dist\core | Out-Null
+          Copy-Item .\core\* .\dist\core -Recurse -Force
+          Copy-Item "$env:RUNNER_TEMP\node\node-v20.19.4-win-x64\node.exe" .\dist\core\node.exe -Force
+
+          Get-ChildItem .\dist | Format-Table Name,Length
+
+      - name: Upload RavenXD EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: RavenXD-Launcher-Windows-x64
+          path: dist/RavenXD-Launcher.exe
+          if-no-files-found: error
+
+      - name: Upload complete package
+        uses: actions/upload-artifact@v4
+        with:
+          name: RavenXD-Launcher-Package
+          path: dist/*
+          if-no-files-found: error
